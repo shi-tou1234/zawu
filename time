@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>桌面时间卡片</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    #clock-card {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 16px 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      text-align: center;
+      backdrop-filter: blur(6px); /* 毛玻璃效果（部分浏览器支持） */
+      z-index: 9999;
+    }
+
+    .time {
+      font-size: 2.2em;
+      font-weight: 600;
+      letter-spacing: 2px;
+      margin: 4px 0;
+    }
+
+    .date {
+      font-size: 1.2em;
+      opacity: 0.9;
+    }
+
+    .weekday {
+      font-size: 1em;
+      opacity: 0.85;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="clock-card">
+    <div class="time" id="time">--:--:--</div>
+    <div class="date" id="date">----年--月--日</div>
+    <div class="weekday" id="weekday">星期-</div>
+  </div>
+
+  <script>
+    function updateTime() {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('zh-CN', { hour12: false });
+      const dateStr = now.getFullYear() + '年' +
+                      String(now.getMonth() + 1).padStart(2, '0') + '月' +
+                      String(now.getDate()).padStart(2, '0') + '日';
+      const weekdayStr = '星期' + ['日', '一', '二', '三', '四', '五', '六'][now.getDay()];
+
+      document.getElementById('time').textContent = timeStr;
+      document.getElementById('date').textContent = dateStr;
+      document.getElementById('weekday').textContent = weekdayStr;
+    }
+
+    // 立即更新一次
+    updateTime();
+    // 每秒更新
+    setInterval(updateTime, 1000);
+  </script>
+</body>
+</html>
