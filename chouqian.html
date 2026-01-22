@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高级抽签系统</title>
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text-color: #1f2937;
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: var(--bg-gradient);
+            color: var(--text-color);
+        }
+
+        .container {
+            width: 90%;
+            max-width: 600px;
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            background: var(--bg-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #4b5563;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            resize: none;
+            font-size: 16px;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .config-row {
+            display: flex;
+            gap: 20px;
+            align-items: flex-end;
+            margin-bottom: 30px;
+        }
+
+        .config-item {
+            flex: 1;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 16px;
+            font-size: 18px;
+            font-weight: bold;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .secondary-btn {
+            background: #10b981;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .secondary-btn:hover {
+            background: #059669;
+        }
+
+        #resultArea {
+            margin-top: 30px;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .rolling-name {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--primary-color);
+            height: 4.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 0.1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { transform: scale(0.95); opacity: 0.8; }
+            to { transform: scale(1.05); opacity: 1; }
+        }
+
+        .winners-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .winner-tag {
+            background: #f3f4f6;
+            padding: 10px 20px;
+            border-radius: 9999px;
+            font-weight: 600;
+            color: var(--primary-color);
+            border: 2px solid var(--primary-color);
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            opacity: 0;
+            transform: scale(0.5);
+        }
+
+        @keyframes popIn {
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .placeholder-text {
+            color: #9ca3af;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✨ 抽签助手</h1>
+        
+        <div class="input-group">
+            <label for="nameInput">参与名单 (用空格、逗号或换行分隔) <span id="totalCount" style="font-weight: normal; font-size: 0.9rem; color: #6b7280; margin-left: 10px;">当前人数: 0</span></label>
+            <textarea id="nameInput" placeholder="请输入名单，例如：张三 李四 王五..." oninput="updateStats()"></textarea>
+        </div>
+
+        <div class="config-row">
+            <div class="config-item">
+                <label for="drawCount">抽取人数</label>
+                <input type="number" id="drawCount" value="1" min="1" onchange="validateCount()">
+            </div>
+            <div class="config-item">
+                <button id="drawBtn" onclick="startDraw()">开始抽签</button>
+            </div>
+        </div>
+
+        <div id="resultArea">
+            <div class="placeholder-text" id="statusText">准备就绪，等待开始...</div>
+            <div id="rollingContainer"></div>
+            <div class="winners-container" id="winnersContainer"></div>
+            <button id="exportBtn" class="secondary-btn" onclick="exportWinners()">📥 导出名单</button>
+        </div>
+    </div>
+
+    <script>
+        let isDrawing = false;
+        let currentWinners = [];
+
+        // 页面加载时恢复名单
+        window.onload = () => {
+            const savedNames = localStorage.getItem('drawNames');
+            if (savedNames) {
+                document.getElementById('nameInput').value = savedNames;
+                updateStats();
+            }
+        };
+
+        function getNames() {
+            const nameInput = document.getElementById('nameInput').value.trim();
+            return nameInput.split(/[\s,，\n]+/).filter(name => name.length > 0);
+        }
+
+        function updateStats() {
+            const names = getNames();
+            const count = names.length;
+            document.getElementById('totalCount').textContent = `当前人数: ${count}`;
+            document.getElementById('drawCount').max = count;
+        }
+
+        function validateCount() {
+            const names = getNames();
+            const drawCountInput = document.getElementById('drawCount');
+            const requestedCount = parseInt(drawCountInput.value);
+
+            if (names.length === 0) {
+                if (requestedCount > 0) {
+                    alert('请先输入参与名单！');
+                    drawCountInput.value = 0;
+                }
+                return;
+            }
+
+            if (requestedCount > names.length) {
+                alert(`抽取人数不能超过总人数 (${names.length}人)！`);
+                drawCountInput.value = names.length;
+            } else if (requestedCount < 1 && names.length > 0) {
+                drawCountInput.value = 1;
+            }
+        }
+
+        function exportWinners() {
+            if (currentWinners.length === 0) return;
+            
+            const content = "抽签结果：\n" + currentWinners.join("\n");
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const now = new Date();
+            const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+            
+            a.href = url;
+            a.download = `抽签结果_${timestamp}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function startDraw() {
+            if (isDrawing) return;
+
+            const nameInput = document.getElementById('nameInput').value.trim();
+            const drawCountInput = document.getElementById('drawCount');
+            const countInput = parseInt(drawCountInput.value);
+            const statusText = document.getElementById('statusText');
+            const rollingContainer = document.getElementById('rollingContainer');
+            const winnersContainer = document.getElementById('winnersContainer');
+            const exportBtn = document.getElementById('exportBtn');
+
+            // 保存名单到本地
+            localStorage.setItem('drawNames', nameInput);
+
+            // 解析名单
+            const names = getNames();
+
+            // 验证输入
+            if (names.length === 0) {
+                alert('请先输入名单！');
+                return;
+            }
+            if (isNaN(countInput) || countInput < 1) {
+                alert('请输入有效的抽取人数！');
+                return;
+            }
+            if (countInput > names.length) {
+                alert(`抽取人数不能大于总人数 (${names.length}人)！`);
+                drawCountInput.value = names.length;
+                return;
+            }
+
+            isDrawing = true;
+            statusText.style.display = 'none';
+            exportBtn.style.display = 'none';
+            winnersContainer.innerHTML = '';
+            currentWinners = [];
+            rollingContainer.innerHTML = '<div class="rolling-name"></div>';
+            const rollingDisplay = rollingContainer.firstChild;
+
+            // 滚动效果
+            let duration = 2000; // 2秒滚动
+            let interval = 50;
+            let timer = setInterval(() => {
+                const randomIndex = Math.floor(Math.random() * names.length);
+                rollingDisplay.textContent = names[randomIndex];
+            }, interval);
+
+            setTimeout(() => {
+                clearInterval(timer);
+                rollingContainer.innerHTML = '';
+                
+                // 抽取结果
+                const pool = [...names];
+                for (let i = 0; i < countInput; i++) {
+                    const idx = Math.floor(Math.random() * pool.length);
+                    currentWinners.push(pool.splice(idx, 1)[0]);
+                }
+
+                // 显示结果
+                currentWinners.forEach((winner, index) => {
+                    setTimeout(() => {
+                        const tag = document.createElement('div');
+                        tag.className = 'winner-tag';
+                        tag.textContent = winner;
+                        winnersContainer.appendChild(tag);
+                        
+                        // 全部显示完成后显示导出按钮
+                        if (index === currentWinners.length - 1) {
+                            setTimeout(() => {
+                                exportBtn.style.display = 'block';
+                            }, 500);
+                        }
+                    }, index * 200);
+                });
+
+                isDrawing = false;
+                statusText.textContent = '抽签完成！';
+                statusText.style.display = 'block';
+            }, duration);
+        }
+    </script>
+</body>
+</html>

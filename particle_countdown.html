@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2025再见 - 2026你好</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        body {
+            background: #000;
+            color: #fff;
+            font-family: 'Arial', sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        // 画布设置
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // 粒子类
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x || Math.random() * canvas.width;
+                this.y = y || Math.random() * canvas.height;
+                this.size = Math.random() * 3 + 2; // 增大粒子尺寸
+                this.color = color || `hsl(${Math.random() * 360}, 100%, 70%)`; // 提高亮度
+                this.vx = (Math.random() - 0.5) * 4; // 提高速度
+                this.vy = (Math.random() - 0.5) * 4; // 提高速度
+                this.ax = 0;
+                this.ay = 0;
+                this.targetX = this.x;
+                this.targetY = this.y;
+                this.friction = 0.85; // 调整摩擦力
+                this.gravity = 0.05;
+                this.springFactor = 0.05; // 增加弹簧系数，使移动更自然
+            }
+
+            update() {
+                // 向目标位置移动 - 使用更自然的弹簧物理模型
+                const dx = this.targetX - this.x;
+                const dy = this.targetY - this.y;
+                
+                // 计算到目标点的距离
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // 添加一些随机扰动，使动画不那么机械
+                const randomFactor = 0.8 + Math.random() * 0.4; // 0.8-1.2 之间的随机数
+                
+                // 当距离较远时，使用更强的拉力
+                if (distance > 3) { // 增加距离阈值
+                    this.ax = dx * this.springFactor * randomFactor;
+                    this.ay = dy * this.springFactor * randomFactor;
+                } else {
+                    // 当接近目标时，减小拉力以避免振荡
+                    this.ax = dx * this.springFactor * 0.7 * randomFactor;
+                    this.ay = dy * this.springFactor * 0.7 * randomFactor;
+                }
+
+                this.vx += this.ax;
+                this.vy += this.ay;
+                
+                // 应用摩擦力，增加一些随机性
+                this.vx *= this.friction + (Math.random() * 0.05 - 0.025);
+                this.vy *= this.friction + (Math.random() * 0.05 - 0.025);
+
+                // 限制最大速度，防止粒子移动过快
+                const maxSpeed = 8; // 提高最大速度
+                const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                if (speed > maxSpeed) {
+                    this.vx = (this.vx / speed) * maxSpeed;
+                    this.vy = (this.vy / speed) * maxSpeed;
+                }
+
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                // 如果粒子已经移出屏幕外，确保它们不会重新出现
+                if (this.x < -100 && this.y < -100) {
+                    // 粒子已经完全移出屏幕，可以将其标记为不可见或移除
+                    // 在实际绘制时会检查这个条件
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 随机移动 - 改进随机移动效果
+            randomize() {
+                // 让粒子向外扩散一段距离，而不是快速乱飞
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * 200 + 100; // 扩散距离
+                this.targetX = canvas.width / 2 + Math.cos(angle) * distance;
+                this.targetY = canvas.height / 2 + Math.sin(angle) * distance;
+                this.vx = (Math.random() - 0.5) * 1;
+                this.vy = (Math.random() - 0.5) * 1;
+            }
+        }
+
+        // 烟花类
+        class Firework {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = canvas.height;
+                this.size = Math.random() * 3 + 1;
+                this.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+                this.vy = -Math.random() * 8 - 5;
+                this.vx = (Math.random() - 0.5) * 3;
+                this.gravity = 0.2;
+                this.exploded = false;
+                this.particles = [];
+            }
+
+            update() {
+                if (!this.exploded) {
+                    this.vy += this.gravity;
+                    this.y += this.vy;
+                    this.x += this.vx;
+
+                    // 到达顶点或接近顶部时爆炸
+                    if (this.vy >= 0 || this.y < Math.random() * canvas.height * 0.5 + 50) {
+                        this.explode();
+                    }
+                } else {
+                    for (let i = this.particles.length - 1; i >= 0; i--) {
+                        this.particles[i].update();
+                        this.particles[i].draw();
+                        if (this.particles[i].size <= 0.1) {
+                            this.particles.splice(i, 1);
+                        }
+                    }
+                }
+            }
+
+            explode() {
+                this.exploded = true;
+                const particleCount = Math.random() * 80 + 50; // 增加粒子数量
+                for (let i = 0; i < particleCount; i++) {
+                    const p = new Particle(this.x, this.y, this.color);
+                    p.size = Math.random() * 3 + 1; // 稍微增大粒子
+                    p.vx = (Math.random() - 0.5) * 12; // 提高速度
+                    p.vy = (Math.random() - 0.5) * 12; // 提高速度
+                    p.gravity = 0.1; // 调整重力
+                    p.friction = 0.92; // 调整摩擦力
+                    this.particles.push(p);
+                }
+            }
+
+            draw() {
+                if (!this.exploded) {
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            isDone() {
+                return this.exploded && this.particles.length === 0;
+            }
+        }
+
+        // 文字转粒子
+        function textToParticles(text, color) {
+            const particles = [];
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+
+            // 绘制文字 - 动态调整字体大小以适应屏幕
+            tempCtx.fillStyle = '#fff';
+            // 根据文字长度和屏幕尺寸计算合适的字体大小
+            const fontSize = Math.min(canvas.height * 0.3, canvas.width / (text.length * 0.8));
+            tempCtx.font = `bold ${fontSize}px Arial`;
+            tempCtx.textAlign = 'center';
+            tempCtx.textBaseline = 'middle';
+            tempCtx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+            // 提取像素点
+            const imageData = tempCtx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+
+            for (let y = 0; y < canvas.height; y += 6) {
+                for (let x = 0; x < canvas.width; x += 6) {
+                    const index = (y * canvas.width + x) * 4;
+                    const alpha = data[index + 3];
+                    if (alpha > 150) {
+                        particles.push(new Particle(x, y, color));
+                    }
+                }
+            }
+
+            return particles;
+        }
+
+        // 主程序
+        class App {
+            constructor() {
+                this.particles = [];
+                this.fireworks = [];
+                this.texts = ['2025再见', '倒计时:5', '倒计时:4', '倒计时:3', '倒计时:2', '倒计时:1', '新年快乐！', '你好，2026'];
+                this.blessings = ['新年快乐', '万事如意', '身体健康', '工作顺利', '学业进步', '心想事成', '幸福美满', '平安喜乐'];
+                this.currentTextIndex = 0;
+                this.countdown = 5;
+                this.state = 'text'; // text, countdown, firework, blessings, credits, end
+                this.nextStateTime = Date.now() + 3000; // 增加初始显示时间到3秒
+                this.fireworkTime = 0;
+                this.blessingTime = 0;
+                this.creditsTime = 0;
+                this.exitTime = 0;
+                this.colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#dfe6e9', '#e17055', '#00b894'];
+
+                // 初始化粒子
+                this.switchText(this.texts[this.currentTextIndex]);
+            }
+
+            switchText(text) {
+                // 打乱现有粒子
+                this.particles.forEach(particle => particle.randomize());
+                
+                // 创建新的文字粒子
+                const newParticles = textToParticles(text, this.colors[this.currentTextIndex % this.colors.length]);
+                
+                // 如果粒子数量不足，添加新粒子
+                if (newParticles.length > this.particles.length) {
+                    const diff = newParticles.length - this.particles.length;
+                    for (let i = 0; i < diff; i++) {
+                        this.particles.push(new Particle());
+                    }
+                }
+                
+                // 设置目标位置
+                for (let i = 0; i < this.particles.length; i++) {
+                    if (i < newParticles.length) {
+                        this.particles[i].targetX = newParticles[i].x;
+                        this.particles[i].targetY = newParticles[i].y;
+                        this.particles[i].color = newParticles[i].color;
+                    } else {
+                        // 多余粒子移动到画布外
+                        const angle = Math.random() * Math.PI * 2;
+                        const distance = Math.max(canvas.width, canvas.height) * 1.5;
+                        this.particles[i].targetX = canvas.width / 2 + Math.cos(angle) * distance;
+                        this.particles[i].targetY = canvas.height / 2 + Math.sin(angle) * distance;
+                    }
+                }
+            }
+
+            update() {
+                // 更新粒子
+                this.particles.forEach(particle => particle.update());
+
+                // 更新烟花
+                this.fireworks.forEach(firework => firework.update());
+                this.fireworks = this.fireworks.filter(firework => !firework.isDone());
+
+                // 状态管理
+                const now = Date.now();
+                
+                if (this.state === 'text' && now > this.nextStateTime) {
+                    this.currentTextIndex++;
+                    if (this.currentTextIndex === 1) {
+                        this.state = 'countdown';
+                        this.nextStateTime = now + 1000;
+                    } else if (this.currentTextIndex === this.texts.length) {
+                        this.state = 'blessings';
+                        this.currentBlessingIndex = 0; // 初始化祝福语索引
+                        this.blessingTime = now + 2000; // 每个祝福语显示2秒
+                        this.switchText(this.blessings[this.currentBlessingIndex]);
+                    } else {
+                        this.switchText(this.texts[this.currentTextIndex]);
+                        this.nextStateTime = now + 1000; // 倒计时数字显示1秒
+                    }
+                }
+                
+                if (this.state === 'countdown') {
+                    if (now > this.nextStateTime) {
+                        this.countdown--;
+                        this.currentTextIndex++;
+                        this.switchText(this.texts[this.currentTextIndex]);
+                        this.nextStateTime = now + 1500; // 延长倒计时数字显示时间到1.5秒
+                        
+                        if (this.countdown <= 0) {
+                            this.state = 'firework';
+                            this.fireworkTime = now + 4000; // 延长烟花时间
+                            this.currentTextIndex++;
+                            this.switchText(this.texts[this.currentTextIndex]);
+                        }
+                    }
+                }
+                
+                if (this.state === 'firework') {
+                    // 生成烟花 - 增加频率以获得更丰富的效果
+                    if (Math.random() < 0.15) { // 增加烟花生成频率
+                        this.fireworks.push(new Firework());
+                    }
+                    
+                    if (now > this.fireworkTime) {
+                        this.state = 'blessings';
+                        this.blessingTime = now + 3000; // 祝福语显示时间
+                        // 显示随机祝福语
+                        const randomBlessing = this.blessings[Math.floor(Math.random() * this.blessings.length)];
+                        this.switchText(randomBlessing);
+                    }
+                }
+                
+                if (this.state === 'blessings') {
+                    if (now > this.blessingTime) {
+                        // 如果还没有显示完所有祝福语，则显示下一个
+                        if (this.currentBlessingIndex === undefined) {
+                            this.currentBlessingIndex = 0;
+                        }
+                        
+                        if (this.currentBlessingIndex < this.blessings.length - 1) {
+                            this.currentBlessingIndex++;
+                            this.blessingTime = now + 2000; // 每个祝福语显示2秒
+                            this.switchText(this.blessings[this.currentBlessingIndex]);
+                        } else {
+                            // 所有祝福语都显示完了，显示制作人信息
+                            this.state = 'credits';
+                            this.creditsTime = now + 3000; // 制作人信息显示3秒
+                            this.switchText('制作人:cmchen');
+                        }
+                    }
+                }
+                
+                if (this.state === 'credits') {
+                    if (now > this.creditsTime) {
+                        // 制作人信息显示完毕，进入退出状态
+                        this.state = 'exit';
+                        this.exitTime = now + 3000; // 3秒后退出
+                        // 粒子彻底消失
+                        this.particles.forEach(particle => {
+                            particle.targetX = -200; // 移动到屏幕外更远的位置
+                            particle.targetY = -200;
+                        });
+                    }
+                }
+                
+                if (this.state === 'exit') {
+                    if (now > this.exitTime) {
+                        // 程序退出 - 停止动画循环
+                        return;
+                    }
+                }
+            }
+
+            draw() {
+                // 清空画布 - 使用完全黑色背景，消除拖影
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 绘制粒子 - 只绘制在屏幕范围内的粒子
+                this.particles.forEach(particle => {
+                    // 检查粒子是否在屏幕范围内
+                    if (!(particle.x < -50 && particle.y < -50)) {
+                        particle.draw();
+                    }
+                });
+
+                // 绘制烟花
+                this.fireworks.forEach(firework => firework.draw());
+            }
+
+            run() {
+                // 检查是否应该退出
+                if (this.state === 'exit' && Date.now() > this.exitTime) {
+                    // 完全停止动画循环
+                    return;
+                }
+                
+                this.update();
+                this.draw();
+                
+                // 只有在非退出状态下才继续动画循环
+                if (this.state !== 'exit' || Date.now() <= this.exitTime) {
+                    requestAnimationFrame(() => this.run());
+                }
+            }
+        }
+
+        // 初始化应用
+        const app = new App();
+        app.run();
+
+        // 窗口大小调整
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            app.switchText(app.texts[app.currentTextIndex]);
+        });
+    </script>
+</body>
+</html>
